@@ -194,13 +194,14 @@ function narrPush(it, front){
 }
 function narrStart(it){
   Narr.cur=it;
-  if(!it.noBanner){
-    fEm.textContent=it.em||'💡'; fTx.textContent=it.text;
-    factbar.style.display='block';
-    factbar.style.borderColor=it.kind==='warn'?'#f2688a':'#FDD023';
-  }
   const words=it.text.split(/\s+/).length;
   const canAudio=hasBank()&&!MUTED&&it.ids&&it.ids.every(id=>AUDIO[id]);
+  it.audible=canAudio;
+  if(!it.noBanner){
+    fEm.textContent=it.em||'💡'; fTx.textContent=it.text;
+    factbar.style.display=(smallScreen()&&canAudio)?'none':'block';
+    factbar.style.borderColor=it.kind==='warn'?'#f2688a':'#FDD023';
+  }
   const maxMs=MUTED?Math.max(2400,words*280):(canAudio?Math.max(9000,words*950):Math.max(6000,words*680));
   clearTimeout(Narr.timer);
   Narr.timer=setTimeout(()=>narrDone(),maxMs);   // watchdog: the queue can never stall
@@ -280,12 +281,20 @@ function resize(){
   U=clamp(Math.min(W,H)/560, 1, 2.2);   // global scale for game elements
   cv.width=W*d; cv.height=H*d; ctx.setTransform(d,0,0,d,0,0);
   buildAmbient();
+  // rotating a phone changes whether the banner fits, so re-decide for the line in flight
+  if(Narr.cur && !Narr.cur.noBanner){
+    factbar.style.display=(smallScreen()&&Narr.cur.audible)?'none':'block';
+  }
 }
 addEventListener('resize',resize);
 
 /* ============ DOM refs ============ */
 const hud=$('hud'), heartsPill=$('heartsPill'), scorePill=$('scorePill'), lvlPill=$('lvlPill'), goalPill=$('goalPill');
 const factbar=$('factbar'), fTx=$('fTx'), fEm=$('fEm');
+// On phones the banner covers the water the player needs. Hide it there, but only
+// when the narration is actually audible: if audio cannot play, the text is the
+// only way the lesson lands, so it stays regardless of screen size.
+function smallScreen(){ return innerWidth<820 || innerHeight<560; }
 const modalWrap=$('modal'), mbox=$('mbox'), credit=$('credit');
 
 /* ============ modal (the central interface unit) ============ */
