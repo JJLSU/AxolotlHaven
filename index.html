@@ -28,8 +28,9 @@
     font-size:clamp(13px,1.9vw,18px); white-space:nowrap;}
   .pill b{color:var(--gold);}
   #goalPill{margin-top:8px; display:inline-block;}
-  #muteBtn{pointer-events:auto; background:rgba(46,19,84,.85); border:2px solid rgba(201,184,232,.6); border-radius:999px;
+  #muteBtn,#fsBtn{pointer-events:auto; background:rgba(46,19,84,.85); border:2px solid rgba(201,184,232,.6); border-radius:999px;
     width:clamp(38px,5vh,50px); height:clamp(38px,5vh,50px); font-size:clamp(17px,2.4vh,24px); cursor:pointer; color:var(--cream);}
+  #fsBtn{display:none;}                     /* shown only where fullscreen is supported */
 
   /* narrated fact banner (non-blocking) */
   #factbar{left:50%; bottom:clamp(18px,3vh,34px); transform:translateX(-50%); width:min(760px,94vw);
@@ -93,6 +94,7 @@
         <div class="pill" id="heartsPill">♥ ♥ ♥</div>
         <div class="pill" id="scorePill">0</div>
         <button id="muteBtn" title="Toggle narration">🔊</button>
+        <button id="fsBtn" title="Full screen">⛶</button>
       </div>
     </div>
     <div class="pill" id="goalPill">💡 0/6 facts</div>
@@ -264,6 +266,46 @@ function narrStopAll(){
   factbar.style.display='none'; factbar.style.borderColor='#FDD023';
 }
 function hushNarration(){ narrStopAll(); }
+/* ---- full screen ---- */
+const fsBtn=$('fsBtn');
+const fsTarget=()=>document.documentElement||document.body;
+function fsElement(){
+  return document.fullscreenElement||document.webkitFullscreenElement||
+         document.mozFullScreenElement||document.msFullscreenElement||null;
+}
+function fsSupported(){
+  const el=fsTarget();
+  return !!(el&&(el.requestFullscreen||el.webkitRequestFullscreen||
+                 el.mozRequestFullScreen||el.msRequestFullscreen));
+}
+function fsSync(){
+  const on=!!fsElement();
+  fsBtn.textContent=on?'⛷':'⛶';
+  fsBtn.title=on?'Exit full screen':'Full screen';
+}
+function fsToggle(){
+  try{
+    if(fsElement()){
+      const ex=document.exitFullscreen||document.webkitExitFullscreen||
+               document.mozCancelFullScreen||document.msExitFullscreen;
+      ex&&ex.call(document);
+    }else{
+      const el=fsTarget();
+      const rq=el.requestFullscreen||el.webkitRequestFullscreen||
+               el.mozRequestFullScreen||el.msRequestFullscreen;
+      rq&&rq.call(el);
+    }
+  }catch(e){}
+}
+// iPhone Safari has no element fullscreen, so the control is hidden rather than dead
+if(fsSupported()){
+  fsBtn.style.display='block';
+  fsBtn.onclick=()=>{ audioInit(); fsToggle(); };
+  for(const ev of ['fullscreenchange','webkitfullscreenchange','mozfullscreenchange','MSFullscreenChange'])
+    document.addEventListener(ev,()=>{ fsSync(); resize(); });
+  fsSync();
+}
+
 $('muteBtn').onclick=()=>{ MUTED=!MUTED; $('muteBtn').textContent=MUTED?'🔇':'🔊';
   if(MUTED){
     try{ if(audEl)audEl.pause(); }catch(e){}
@@ -1419,10 +1461,12 @@ function drawAxolotl(x,y,dir,scale,mood,swim,c,m){
     c.beginPath(); c.arc(22,-5.5,2.7,0,TAU); c.arc(22,5.5,2.7,0,TAU); c.fill();
     c.fillStyle='#fff'; c.beginPath(); c.arc(23,-6.3,1,0,TAU); c.arc(23,4.7,1,0,TAU); c.fill();
   }
+  // the head reads top down: the mouth crosses the snout on the midline, bowing
+  // forward when happy and back when sad
   c.strokeStyle=m.mouth; c.lineWidth=2; c.lineCap='round';
   c.beginPath();
-  if(mood==='sad')c.arc(28,4,5,Math.PI*1.15,Math.PI*1.85);
-  else c.arc(27,-1,6,Math.PI*.25,Math.PI*.78);
+  if(mood==='sad')c.arc(31,0,7,Math.PI*.72,Math.PI*1.28);
+  else c.arc(23,0,7,-Math.PI*.30,Math.PI*.30);
   c.stroke();
   c.fillStyle=m.blush;
   c.beginPath(); c.ellipse(20,10,3.4,2,0,0,TAU); c.ellipse(20,-10,3.4,2,0,0,TAU); c.fill();
